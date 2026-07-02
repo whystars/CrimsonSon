@@ -1,0 +1,22 @@
+bin/
+obj/
+.vs/
+
+# NuGet restore output
+packages/
+
+# Local game/server references, do not redistribute
+using/
+
+# User-specific files
+*.user
+*.suo
+*.cache
+*.pdb
+
+# Generated plugin configs
+config.yml
+translations.yml
+
+# Local assistant instructions
+AGENTS.md
