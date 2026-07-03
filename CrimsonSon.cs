@@ -30,7 +30,7 @@ public class CrimsonSon : Plugin<CSConfig>
     public override string Name { get; } = "CrimsonSon";
     public override string Description { get; } = "一个实现了深红之子阵营的插件，内容丰富";
     public override string Author { get; } = "Crystal";
-    public override Version Version { get; } = new(1, 1, 0);
+    public override Version Version { get; } = new(1, 1, 1);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
     public override LoadPriority Priority { get; } = LoadPriority.Lowest;
     public override bool IsTransparent { get; } = false;
