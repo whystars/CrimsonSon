@@ -22,23 +22,17 @@ CrimsonSon 自己会生成两份 YAML：
 
 LabAPI 默认配置目录规则是：
 
-```text
-%AppData%\SCP Secret Laboratory\LabAPI\configs\<port>\CrimsonSon\config.yml
-%AppData%\SCP Secret Laboratory\LabAPI\configs\<port>\CrimsonSon\translations.yml
-```
+- `config.yml`：`%AppData%\SCP Secret Laboratory\LabAPI\configs\{port}\CrimsonSon\config.yml`
+- `translations.yml`：`%AppData%\SCP Secret Laboratory\LabAPI\configs\{port}\CrimsonSon\translations.yml`
 
 举例，如果服务器端口是 `7777`，那通常会是：
 
-```text
-%AppData%\SCP Secret Laboratory\LabAPI\configs\7777\CrimsonSon\config.yml
-%AppData%\SCP Secret Laboratory\LabAPI\configs\7777\CrimsonSon\translations.yml
-```
+- `config.yml`：`%AppData%\SCP Secret Laboratory\LabAPI\configs\7777\CrimsonSon\config.yml`
+- `translations.yml`：`%AppData%\SCP Secret Laboratory\LabAPI\configs\7777\CrimsonSon\translations.yml`
 
 如果服务器启用了 `hoster_policy.txt`，并且里面设置了 `gamedir_for_configs: true`，那基准目录会从 `%AppData%` 变成服务器目录下的：
 
-```text
-AppData\SCP Secret Laboratory\LabAPI\configs\<port>\CrimsonSon\
-```
+- `AppData\SCP Secret Laboratory\LabAPI\configs\{port}\CrimsonSon\`
 
 ## 首次启动时会发生什么
 
@@ -126,8 +120,6 @@ AppData\SCP Secret Laboratory\LabAPI\configs\<port>\CrimsonSon\
 
 按它仓库里的说明，AudioManagerAPI 会生成：
 
-```text
-Configs/AudioConfig.json
-```
+- `Configs/AudioConfig.json`
 
 这个文件主要是音频缓存和默认淡入淡出之类的设置，和你这里的 `config.yml` / `translations.yml` 不是一回事。

@@ -66,29 +66,25 @@ dotnet build CrimsonSon.sln -c Release
 
 ## 安装
 
-CrimsonSon 基于 `LabAPI`，不是 `Exiled` 插件。
+适用对象：`LabAPI` 服务器。
 
-按 LabAPI 默认加载规则，插件和依赖通常放在下面这些目录里：
+常用目录：
 
-```text
-插件目录（全局）: %AppData%\SCP Secret Laboratory\LabAPI\plugins\global\
-插件目录（单端口）: %AppData%\SCP Secret Laboratory\LabAPI\plugins\<port>\
-依赖目录（全局）: %AppData%\SCP Secret Laboratory\LabAPI\dependencies\global\
-依赖目录（单端口）: %AppData%\SCP Secret Laboratory\LabAPI\dependencies\<port>\
-```
+- 插件目录（全局）：`%AppData%\SCP Secret Laboratory\LabAPI\plugins\global\`
+- 插件目录（单端口）：`%AppData%\SCP Secret Laboratory\LabAPI\plugins\{port}\`
+- 依赖目录（全局）：`%AppData%\SCP Secret Laboratory\LabAPI\dependencies\global\`
+- 依赖目录（单端口）：`%AppData%\SCP Secret Laboratory\LabAPI\dependencies\{port}\`
 
-如果你的服务端启用了 `hoster_policy.txt`，并且里面有 `gamedir_for_configs: true`，那上面的 `%AppData%` 会改成服务器目录下的 `AppData\`。
+如果启用了 `hoster_policy.txt`，并且设置了 `gamedir_for_configs: true`，上面的 `%AppData%` 会改成服务器目录下的 `AppData\`。
 
-结合 [SCPSL-AudioManagerAPI](https://github.com/iomatix/-SCPSL-AudioManagerAPI) 的安装思路，推荐按下面这样装：
+安装步骤：
 
 1. 到本仓库的 `v1.1.1` release 页面下载 `CrimsonSon.dll` 和随 release 一起附带的依赖 DLL。
-2. 把 `CrimsonSon.dll` 放进 `plugins\global` 或 `plugins\<port>`。
-3. 把 release 里除 `CrimsonSon.dll` 之外的依赖 DLL 放进 `dependencies\global` 或 `dependencies\<port>`。
-4. 不要把这批依赖 DLL 丢进 `plugins` 目录，也不要混用 Exiled 版依赖。
+2. 把 `CrimsonSon.dll` 放进 `plugins\global` 或 `plugins\{port}`。
+3. 把 release 里除 `CrimsonSon.dll` 之外的依赖 DLL 放进 `dependencies\global` 或 `dependencies\{port}`。
+4. 不要把依赖 DLL 放进 `plugins` 目录。
 5. 如果你的服务器本来已经装了同版本的 `LabApi.dll`、`AudioManagerAPI.dll`、`HintServiceMeow.dll` 等依赖，可以不用重复覆盖；但版本最好和当前 release 保持一致。
 6. 首次启动后再去改配置，不要先手搓空白配置文件。
-
-这次 release 附的是面向 `LabAPI + Release` 的运行依赖，不包含 Debug 产物，也不附 Exiled 体系的东西。
 
 另外，按 AudioManagerAPI 仓库说明，它首次运行后会在服务器侧生成自己的音频配置文件 `Configs/AudioConfig.json`。这个文件属于 AudioManagerAPI，不是 CrimsonSon 自己的玩法配置。
 
