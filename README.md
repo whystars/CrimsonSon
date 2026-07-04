@@ -4,127 +4,97 @@
 ![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.8.1-green)
 ![License](https://img.shields.io/badge/License-GPLv3-red)
 
-CrimsonSon（深红之子）是一个给 `SCP: Secret Laboratory` 服务器使用的阵营玩法插件。
+CrimsonSon（深红之子）是一个基于 LabAPI 的 `SCP: Secret Laboratory` 服务器插件。插件为回合加入第三方阵营“深红之子”：他们需要保护教皇进入 `SCP-049` 或 `SCP-106` 收容室完成仪式，并通过仪式终结回合。
 
-它基于 `Northwood.LabAPI` 开发，为回合加入第三方阵营“深红之子”。这套玩法的目标不是常规交战，而是保护教皇完成仪式，在 `SCP-049` 或 `SCP-106` 收容室召唤深红之王，并直接终结回合。
+当前插件版本：`1.1.1`
 
-## 当前状态
+## 玩法概览
 
-当前仓库代码版本按项目现状记为 `1.1.1`。
+回合开始后，插件会从 D 级人员中随机选择一名玩家成为 `SCP-999-B`。`SCP-999-B` 需要前往广播室，满足条件后会从观察者中召唤深红之子阵营。
 
-已经完成的部分：
+深红阵营生成后，`HolyFather`（教皇）是仪式核心。教皇需要携带 `SCP1576` 前往 `SCP-049` 或 `SCP-106` 收容室并启动仪式。倒计时期间，教皇必须保持存活并维持有效身份；仪式完成后，插件会处理非深红阵营的存活玩家并请求结束回合。
 
-- `1.1.1` 已完成本地 `Release` 编译
-- 项目内依赖版本声明已经同步刷新
-- 仪式倒计时已改为配置项，不再依赖音频长度
-- `CASSIE`、召唤、仪式音频已经接入
-- 角色人数上限、权重、血量、音量、房间、HUD 坐标已支持配置覆盖
-- 角色名和角色描述已支持通过 `translations.yml` 覆盖
-
-还没做的验证：
-
-- 还没有做真实服务器联机测试
-- `Round.End(true)` 只能结束回合，不能精确指定“深红阵营胜利队”
-
-## 玩法流程
-
-完整设计见 [DESIGN.md](DESIGN.md)。
-
-简化流程是这样：
-
-1. 回合开始后，从 `ClassD` 中随机选一名玩家变成 `SCP-999-B`
-2. `SCP-999-B` 进入广播室后，尝试从观察者中召唤深红之子阵营
-3. 深红阵营中的 `HolyFather` 在 `049` 或 `106` 收容室使用 `SCP1576`，开始仪式
-4. 仪式持续期间会显示全服倒计时，并阻止 `SCP1576` 被拾取
-5. 仪式完成后，会清除非深红阵营存活玩家并结束回合
+完整规则见 [DESIGN.md](DESIGN.md)。
 
 ## 依赖
 
-Release 只提供 `CrimsonSon.dll`，下面这些需要服务器侧提前安装或确认已经具备兼容版本：
+Release 默认只提供 `CrimsonSon.dll`。服务器需要提前安装或具备兼容版本的前置组件：
 
 - `Northwood.LabAPI 1.1.7`
 - `SCPSL-AudioManagerAPI 2.3.6`
 - `HintServiceMeow 5.5.0`
-- `YamlDotNet 18.1.0`
 - `.NET Framework 4.8.1`
-- `C# 13.0`
 
-另外这轮还同步引入或更新了若干兼容性和音频相关 NuGet 包，完整版本以 `packages.config` 和 `CrimsonSon.csproj` 为准。
+`YamlDotNet 18.1.0` 等 NuGet 依赖用于构建和运行解析，具体版本以项目文件为准。请按各上游项目说明安装 LabAPI、音频和 HUD 前置插件；本项目发布包不重新分发这些依赖。
 
-## 构建
+## 安装
 
-本地构建：
+适用环境：LabAPI 服务器。
+
+常用插件目录：
+
+- 全局插件：`%AppData%\SCP Secret Laboratory\LabAPI\plugins\global\`
+- 指定端口：`%AppData%\SCP Secret Laboratory\LabAPI\plugins\{port}\`
+
+如果服务器启用了 `hoster_policy.txt`，并设置 `gamedir_for_configs: true`，LabAPI 的数据目录会改到服务器目录下的 `AppData\`。
+
+安装步骤：
+
+1. 安装并确认 `LabAPI`、`SCPSL-AudioManagerAPI`、`HintServiceMeow` 可正常加载。
+2. 下载对应版本的 `CrimsonSon.dll`。
+3. 将 `CrimsonSon.dll` 放入 LabAPI 的 `plugins\global` 或 `plugins\{port}` 目录。
+4. 启动服务器一次，让插件生成默认配置和翻译文件。
+5. 按需修改生成出来的 `config.yml` 与 `translations.yml`。
+
+配置文件位置和升级处理方式见 [CONFIG_GUIDE.md](CONFIG_GUIDE.md)。
+
+## 配置
+
+CrimsonSon 会生成两份 YAML 文件：
+
+- `config.yml`：召唤人数、仪式时长、出生房间、音量、HUD 坐标、角色人数上限、权重和血量。
+- `translations.yml`：提示文本、CASSIE 文案、倒计时文案、角色名称和角色描述。
+
+角色默认物品目前由插件内置，不通过配置文件修改。
+
+## 管理命令
+
+插件提供一个 Remote Admin 命令用于测试或手动调整深红角色：
+
+```text
+csrole list
+csrole [玩家名称/玩家ID] [角色编号]
+```
+
+命令别名：
+
+```text
+CrimsonSonRole
+CrimsonRole
+```
+
+## 从源码构建
+
+项目目标框架为 `.NET Framework 4.8.1`，语言版本为 `C# 13.0`。
+
+常用构建命令：
 
 ```powershell
 dotnet build CrimsonSon.sln -c Debug
 dotnet build CrimsonSon.sln -c Release
 ```
 
-上面这两个命令仍然是当前项目的构建入口。
+源码构建需要准备项目引用到的 SCP:SL、LabAPI 和相关插件 DLL。公开仓库不会提交本地服务器引用目录、NuGet 还原目录或构建产物。
 
-注意：
+## 已知说明
 
-公开仓库不会提交 `using/` 下的本地游戏引用，所以你直接克隆后不一定能立刻通过编译。需要你自己补齐对应的本地引用 DLL。
+- 插件调用游戏原生回合结束逻辑请求结束回合，最终结算面板显示由 SCP:SL 原生逻辑决定。
+- `SCPSL-AudioManagerAPI` 会生成自己的音频配置文件；那不是 CrimsonSon 的玩法配置。
+- CrimsonSon 的音频资源已嵌入插件 DLL，不需要额外复制 `Audio` 目录作为发布资产。
 
-## 安装
+## 许可证
 
-适用对象：`LabAPI` 服务器。
-
-常用目录：
-
-- 插件目录（全局）：`%AppData%\SCP Secret Laboratory\LabAPI\plugins\global\`
-- 插件目录（单端口）：`%AppData%\SCP Secret Laboratory\LabAPI\plugins\{port}\`
-
-如果启用了 `hoster_policy.txt`，并且设置了 `gamedir_for_configs: true`，上面的 `%AppData%` 会改成服务器目录下的 `AppData\`。
-
-安装步骤：
-
-1. 先按各上游项目说明安装 `LabAPI`、`SCPSL-AudioManagerAPI`、`HintServiceMeow` 等前置依赖。
-2. 到本仓库的 `v1.1.1` release 页面下载 `CrimsonSon.dll`。
-3. 把 `CrimsonSon.dll` 放进 `plugins\global` 或 `plugins\{port}`。
-4. 首次启动后再去改配置，不要先手搓空白配置文件。
-
-另外，按 AudioManagerAPI 仓库说明，它首次运行后会在服务器侧生成自己的音频配置文件 `Configs/AudioConfig.json`。这个文件属于 AudioManagerAPI，不是 CrimsonSon 自己的玩法配置。
-
-## 配置说明
-
-CrimsonSon 会自动生成：
-
-- `config.yml`
-- `translations.yml`
-
-完整配置教程看 [CONFIG_GUIDE.md](CONFIG_GUIDE.md)。
-
-这里就不把配置项逐条重复抄一遍了。简单说：
-
-- 玩法数值、房间、音量、HUD 坐标这些改 `config.yml`
-- 文本提示、Cassie 文案、角色名称和描述这些改 `translations.yml`
-- 角色默认物品目前还是硬编码，没有整套配置化
-
-## 翻译说明
-
-插件会生成 `translations.yml`。
-
-目前支持覆盖：
-
-- 命令提示
-- 召唤成功 / 失败提示
-- 观察者不足提示
-- 仪式开始 / 中断提示
-- Cassie 广播文案
-- 倒计时 HUD 文案
-- 终局击杀文案
-- 各角色名称和描述
-
-角色描述支持 `{Name}` 占位符。
-
-## 开源说明
-
-本仓库使用 `GNU GPL v3` 协议开源。
-
-为了避免把游戏本体或本地服务器文件一起再分发，仓库不会提交 `using/` 这类本地引用目录，也不会提交 `bin/`、`obj/`、`.vs/`、`packages/` 等构建产物或还原目录。
-
-如果你要在自己的环境里重新编译，请自行准备对应的本地引用。
+本项目使用 `GNU GPL v3` 协议开源。
 
 ## 参考
 
