@@ -130,13 +130,13 @@ public class CrimsonSon : Plugin<CSConfig>
         base.LoadConfigs();
         Instance = this;
 
-        if (!this.TryLoadConfig<CSConfig>("config.yml", out _config) || _config == null)
+        if (!this.TryLoadConfig<CSConfig>("config.yml", out _config, false) || _config == null)
         {
             Logger.Warn($"{Name} 配置文件加载失败，将使用默认配置继续运行。");
             _config = new CSConfig();
         }
 
-        if (!this.TryLoadConfig<CSTranslation>("translations.yml", out _trans) || _trans == null)
+        if (!this.TryLoadConfig<CSTranslation>("translations.yml", out _trans, false) || _trans == null)
         {
             Logger.Warn($"{Name} 翻译文件加载失败，将使用默认文本继续运行。");
             _trans = new CSTranslation();
