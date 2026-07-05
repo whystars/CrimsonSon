@@ -32,14 +32,17 @@ public class CSEventsHandler : CustomEventsHandler
         {
             Logger.Info($"{p.Nickname} 成为 {Instance.Translations[p.GetDataStore<MemberData>().characterID].Name}。");
             Vector3? targetPos = null;
-            var firstRoom = Room.Get(Instance._config.SpawnRoom).FirstOrDefault();
+            var targetRoom = p.GetDataStore<MemberData>().characterID == RoleID.SCP999B
+                ? Instance._config.Spawn999BRoom
+                : Instance._config.SpawnRoom;
+            var firstRoom = Room.Get(targetRoom).FirstOrDefault();
             if (firstRoom != null)
             {
                 targetPos = firstRoom.Position + new Vector3(0, 1, 0);
             }
             else
             {
-                Logger.Warn($"未获取到房间 {Instance._config.SpawnRoom} 的位置。");
+                Logger.Warn($"未获取到房间 {targetRoom} 的位置。");
             }
 
             if (targetPos.HasValue)
@@ -106,23 +109,50 @@ public class CSEventsHandler : CustomEventsHandler
             (p.Room.Name == RoomName.Hcz049 || p.Room.Name == RoomName.Hcz106))
         {
             Instance.InSCP049Chamber = p.Room.Name == RoomName.Hcz049;
-            Timing.RunCoroutine(Instance.EventCD(p));
             ev.IsAllowed = false;
-            ev.Player.DropItem(ev.UsableItem);
+            var ritualPickup = ev.Player.DropItem(ev.UsableItem);
+            Instance.TrackRitualOffering(ritualPickup);
+            Timing.RunCoroutine(Instance.EventCD(p));
         }
 
         base.OnPlayerUsingItem(ev);
+    }
+
+    public override void OnPlayerUsingIntercom(PlayerUsingIntercomEventArgs ev)
+    {
+        if (ev.Player == null) return;
+
+        if (Instance.TrySummonFromIntercom(ev.Player, ev.State))
+        {
+            ev.IsAllowed = true;
+        }
+
+        base.OnPlayerUsingIntercom(ev);
     }
 
     public override void OnPlayerPickingUpItem(PlayerPickingUpItemEventArgs ev)
     {
         if (ev.Player == null) return;
 
-        if (Instance.IsHoldingEvent && ev.Pickup.Type == ItemType.SCP1576)
+        if (Instance.IsRitualOfferingPickup(ev.Pickup) && Instance.IsCrimsonMember(ev.Player))
         {
             ev.IsAllowed = false;
+            Logger.Info($"深红阵营成员 {ev.Player.Nickname} 尝试拾取仪式 SCP1576，已阻止。");
         }
 
         base.OnPlayerPickingUpItem(ev);
+    }
+
+    public override void OnPlayerPickedUpItem(PlayerPickedUpItemEventArgs ev)
+    {
+        if (ev.Player == null) return;
+
+        if (Instance.IsRitualOfferingItem(ev.Item) && !Instance.IsCrimsonMember(ev.Player))
+        {
+            Logger.Info($"非深红阵营玩家 {ev.Player.Nickname} 拾取了仪式 SCP1576，深红献祭仪式中断。");
+            Instance.InterruptRitual(Instance._trans.RitualInterrupted);
+        }
+
+        base.OnPlayerPickedUpItem(ev);
     }
 }

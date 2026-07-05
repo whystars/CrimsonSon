@@ -12,10 +12,13 @@ public class CSConfig
     [Description("单次最多召唤多少名深红之子成员。")]
     public int MaximumSummonCount { get; set; } = 15;
 
+    [Description("是否允许旁观状态的 dummy NPC 计入深红之子召唤候选。发布到正式服时可关闭。")]
+    public bool CountDummySpectatorsForSummon { get; set; } = true;
+
     [Description("深红献祭仪式持续时间（秒）。")]
     public int RitualDurationSeconds { get; set; } = 120;
 
-    [Description("召唤成功时的空间音效音量。")]
+    [Description("召唤成功时入场音效音量。")]
     public float SummonAudioVolume { get; set; } = 0.8f;
 
     [Description("仪式开始时的全局音效音量。")]
@@ -23,6 +26,9 @@ public class CSConfig
 
     [Description("CASSIE 配套音效音量。")]
     public float CassieAudioVolume { get; set; } = 0.8f;
+
+    [Description("深红之子召唤时 CASSIE message 自动发送多少个用空格分隔的英文句号。实测约 1 个句号延长 1 秒显示时间，不会追加到中文字幕后面。")]
+    public int CassieBroadcastHoldSeconds { get; set; } = 12;
 
     [Description("深红之子第二波出生房间。")]
     public RoomName SpawnRoom { get; set; } = RoomName.Outside;
@@ -52,7 +58,7 @@ public class CSConfig
     public float NotificationX { get; set; } = -800f;
 
     [Description("全局提示 HUD 的 Y 坐标。")]
-    public float NotificationY { get; set; } = 200f;
+    public float NotificationY { get; set; } = 300f;
 
     [Description("全局提示 HUD 的字体大小。")]
     public int NotificationFontSize { get; set; } = 25;

@@ -49,8 +49,10 @@ CrimsonSon 使用按端口分目录的 LabAPI 配置路径。
 
 - `MinimumSpectatorsToSummon`：召唤深红之子所需的最少观察者人数。
 - `MaximumSummonCount`：单次最多召唤的深红阵营人数。
+- `CountDummySpectatorsForSummon`：是否允许旁观状态的 dummy NPC 计入召唤候选。测试服可以开启，正式服建议关闭。
 - `RitualDurationSeconds`：献祭仪式倒计时时长，单位为秒。
-- `SummonAudioVolume`、`EventAudioVolume`、`CassieAudioVolume`：召唤、仪式和 CASSIE 配套音频音量。
+- `SummonAudioVolume`、`EventAudioVolume`、`CassieAudioVolume`：召唤入场、仪式和 CASSIE 配套音频音量。
+- `CassieBroadcastHoldSeconds`：召唤时 CASSIE message 自动发送的英文句号数量。代码会生成 `. . . .` 这种空格分隔格式；实测约 1 个 `.` 延长 1 秒显示时间。这些句号不会追加到中文字幕后面，CASSIE 声音由 `cassie.wav` 播放。
 - `SpawnRoom`：深红阵营第二波生成房间。
 - `Spawn999BRoom`：`SCP-999-B` 开局生成房间。
 - HUD 坐标和字号：角色介绍、仪式倒计时、全局提示的位置与字体大小。
@@ -95,7 +97,9 @@ Fanatic
 
 ## 升级配置
 
-多数版本升级可以直接保留现有 `config.yml` 和 `translations.yml`。插件成功读取旧配置后，LabAPI 通常会回写新字段，并保留已有自定义值。
+配置结构变化时，建议删除旧 `config.yml` 和 `translations.yml` 重新生成，再把需要保留的自定义值迁移回去。
+
+从旧版本升级到 `1.2.0` 时，请按配置结构变化处理：先备份并删除旧版 `config.yml` 和 `translations.yml`，启动服务器让插件重新生成，再把需要保留的自定义值迁移到新文件。旧字段 `CassieAnnouncementWords` 已废弃，不要迁移；新版使用 `CassieBroadcastHoldSeconds` 控制 CASSIE 字幕延时，并新增 `CountDummySpectatorsForSummon` 控制 dummy 旁观者是否计入召唤候选。
 
 推荐升级流程：
 

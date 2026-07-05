@@ -15,6 +15,7 @@ using LabApi.Loader.Features.Plugins.Enums;
 using MapGeneration;
 using MEC;
 using PlayerRoles;
+using PlayerRoles.Voice;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,7 +31,7 @@ public class CrimsonSon : Plugin<CSConfig>
     public override string Name { get; } = "CrimsonSon";
     public override string Description { get; } = "一个实现了深红之子阵营的插件，内容丰富";
     public override string Author { get; } = "Crystal";
-    public override Version Version { get; } = new(1, 1, 1);
+    public override Version Version { get; } = new(1, 2, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
     public override LoadPriority Priority { get; } = LoadPriority.Lowest;
     public override bool IsTransparent { get; } = false;
@@ -101,6 +102,8 @@ public class CrimsonSon : Plugin<CSConfig>
     private int _cassieSessionId;
     private int _summonSessionId;
     private int? _ritualOwnerPlayerId;
+    private ushort? _ritualOfferingSerial;
+    private int _ritualSequence;
 
     public struct CSRoleTrans
     {
@@ -202,25 +205,6 @@ public class CrimsonSon : Plugin<CSConfig>
         }
     }
 
-    public IEnumerator<float> CallOf999B(Player player)
-    {
-        while (Round.IsRoundInProgress)
-        {
-            if (!IsCurrent999B(player))
-            {
-                yield break;
-            }
-
-            if (player.Room != null && player.Room.Name == RoomName.EzIntercom)
-            {
-                SummonCSFaction();
-                yield break;
-            }
-
-            yield return Timing.WaitForSeconds(1f);
-        }
-    }
-
     public IEnumerator<float> EventCD(Player player)
     {
         if (IsHoldingEvent || player == null || !IsValidHolyFather(player))
@@ -230,12 +214,13 @@ public class CrimsonSon : Plugin<CSConfig>
 
         IsHoldingEvent = true;
         _ritualOwnerPlayerId = player.PlayerId;
+        int ritualSequence = ++_ritualSequence;
         _eventSessionId = DefaultAudioManager.Instance.PlayGlobalAudio(
             key: EVENT_KEY,
             loop: false,
             volume: Mathf.Clamp01(_config.EventAudioVolume),
             priority: AudioPriority.High,
-            validPlayersFilter: target => target.GetDataStore<MemberData>().IsMember);
+            validPlayersFilter: _ => true);
 
         string chamberName = InSCP049Chamber ? "SCP-049 的收容室" : "SCP-106 的收容室";
         ShowTemporaryMessageToAll(_trans.RitualStarted, 5f);
@@ -245,6 +230,11 @@ public class CrimsonSon : Plugin<CSConfig>
 
         while (remainingSeconds > 0)
         {
+            if (!IsActiveRitualFor(player, ritualSequence))
+            {
+                yield break;
+            }
+
             if (!IsValidHolyFather(player) || !Round.IsRoundInProgress)
             {
                 InterruptRitual(_trans.RitualInterrupted);
@@ -252,12 +242,29 @@ public class CrimsonSon : Plugin<CSConfig>
             }
 
             yield return Timing.WaitForSeconds(1f);
+
+            if (!IsActiveRitualFor(player, ritualSequence))
+            {
+                yield break;
+            }
+
+            if (!IsValidHolyFather(player) || !Round.IsRoundInProgress)
+            {
+                InterruptRitual(_trans.RitualInterrupted);
+                yield break;
+            }
+
             remainingSeconds--;
 
             if (remainingSeconds > 0)
             {
                 UpdateCountdownToAll(chamberName, remainingSeconds);
             }
+        }
+
+        if (!IsActiveRitualFor(player, ritualSequence))
+        {
+            yield break;
         }
 
         if (!IsValidHolyFather(player) || !Round.IsRoundInProgress)
@@ -302,8 +309,12 @@ public class CrimsonSon : Plugin<CSConfig>
         }
 
         WaveHasSpawned = true;
-        var spectators = Player.List.Where(p => p != null && p.Role == RoleTypeId.Spectator).ToList();
-        if (spectators.Count < Math.Max(1, _config.MinimumSpectatorsToSummon))
+        var summonCandidates = GetSummonCandidates();
+        int realSpectatorCount = summonCandidates.Count(p => !p.IsDummy);
+        int dummyCandidateCount = summonCandidates.Count(p => p.IsDummy);
+        Logger.Info($"正在尝试召唤深红之子：真实旁观者 {realSpectatorCount}，dummy 候选 {dummyCandidateCount}，总候选 {summonCandidates.Count}/{Math.Max(1, _config.MinimumSpectatorsToSummon)}，允许 dummy：{_config.CountDummySpectatorsForSummon}。");
+
+        if (summonCandidates.Count < Math.Max(1, _config.MinimumSpectatorsToSummon))
         {
             FailedShowToAll(_trans.NotEnoughSpectators);
 
@@ -324,12 +335,12 @@ public class CrimsonSon : Plugin<CSConfig>
         SucceedShowToAll(_trans.SummonSuccess);
         BroadcastCSFaction();
 
-        int toSpawn = Math.Min(spectators.Count, Math.Max(1, _config.MaximumSummonCount));
+        int toSpawn = Math.Min(summonCandidates.Count, Math.Max(1, _config.MaximumSummonCount));
         var roleCounts = Enum.GetValues(typeof(RoleID))
             .Cast<RoleID>()
             .ToDictionary(roleId => roleId, _ => 0);
         var guaranteedRoles = new List<RoleID> { RoleID.HolyFather, RoleID.Heathen, RoleID.Hallow };
-        var availablePlayers = spectators.OrderBy(_ => Guid.NewGuid()).ToList();
+        var availablePlayers = summonCandidates.OrderBy(_ => Guid.NewGuid()).ToList();
 
         foreach (var roleId in guaranteedRoles)
         {
@@ -365,13 +376,20 @@ public class CrimsonSon : Plugin<CSConfig>
             availablePlayers.RemoveAt(0);
         }
 
+        PlaySummonAudioForFaction();
         Logger.Info("深红之子已被召唤!");
     }
 
     public void BroadcastCSFaction()
     {
         Announcer.Clear();
-        Announcer.Message("", _trans.CassieBroadcast, false);
+        Announcer.Message(
+            BuildCassiePauseMessage(),
+            BuildCassieSubtitle(_trans.CassieBroadcast),
+            false,
+            100f,
+            0f);
+        Logger.Info($"深红之子召唤广播字幕已发送给全体玩家，CASSIE message 使用 {ResolveCassieHoldSeconds()} 个英文句号延长显示，CASSIE 语音由 cassie.wav 播放。");
 
         DefaultAudioManager.Stop(_cassieSessionId);
         _cassieSessionId = DefaultAudioManager.Instance.PlayGlobalAudio(
@@ -379,19 +397,19 @@ public class CrimsonSon : Plugin<CSConfig>
             loop: false,
             volume: Mathf.Clamp01(_config.CassieAudioVolume),
             priority: AudioPriority.High,
-            validPlayersFilter: _ => true);
+            validPlayersFilter: target => target != null);
+    }
 
+    private void PlaySummonAudioForFaction()
+    {
         DefaultAudioManager.Stop(_summonSessionId);
-        _summonSessionId = DefaultAudioManager.Instance.PlayAudio(
+        _summonSessionId = DefaultAudioManager.Instance.PlayGlobalAudio(
             key: SUMMON_KEY,
-            position: new Vector3(10f, 0f, 10f),
             loop: false,
             volume: Mathf.Clamp01(_config.SummonAudioVolume),
-            minDistance: 5f,
-            maxDistance: 25f,
-            isSpatial: true,
             priority: AudioPriority.High,
-            validPlayersFilter: target => target.Role == RoleTypeId.Tutorial);
+            validPlayersFilter: target => target != null && target.GetDataStore<MemberData>().IsMember);
+        Logger.Info("深红之子召唤入场音乐已对深红阵营成员播放。");
     }
 
     public void SetCustomRoles(RoleID id, Player player)
@@ -417,11 +435,6 @@ public class CrimsonSon : Plugin<CSConfig>
         player.ClearItems();
         player.GetDataStore<MemberData>().IsMember = true;
         player.GetDataStore<MemberData>().characterID = id;
-
-        if (id == RoleID.SCP999B)
-        {
-            Timing.RunCoroutine(CallOf999B(player));
-        }
 
         player.SetRole(RoleTypeId.Tutorial, RoleChangeReason.RemoteAdmin, RoleSpawnFlags.None);
         RoleInit(id, player);
@@ -551,6 +564,43 @@ public class CrimsonSon : Plugin<CSConfig>
         }
     }
 
+    public bool TrySummonFromIntercom(Player player, IntercomState state)
+    {
+        if (player == null || !Round.IsRoundInProgress)
+        {
+            return false;
+        }
+
+        var data = player.GetDataStore<MemberData>();
+        if (!data.IsMember || data.characterID != RoleID.SCP999B)
+        {
+            return false;
+        }
+
+        Logger.Info($"SCP-999-B {player.Nickname} 正在使用广播室话筒，话筒状态：{state}，玩家角色：{player.Role}，存活：{player.IsAlive}。");
+
+        if (!IsCurrent999B(player))
+        {
+            Logger.Warn("SCP-999-B 广播触发失败：玩家当前状态不符合 SCP-999-B 有效条件。");
+            return false;
+        }
+
+        if (WaveHasSpawned)
+        {
+            Logger.Info("深红之子本回合已经召唤过，忽略本次广播触发。");
+            return false;
+        }
+
+        if (state != IntercomState.Ready && state != IntercomState.Starting)
+        {
+            Logger.Info($"SCP-999-B 本次广播未触发召唤：话筒状态为 {state}。");
+            return false;
+        }
+
+        SummonCSFaction();
+        return true;
+    }
+
     public void InterruptRitual(string message)
     {
         if (!IsHoldingEvent)
@@ -561,6 +611,42 @@ public class CrimsonSon : Plugin<CSConfig>
         CleanupRitualState();
         ShowTemporaryMessageToAll(message, 5f);
         Logger.Info("深红献祭仪式已被中断。");
+    }
+
+    public void TrackRitualOffering(Pickup pickup)
+    {
+        if (pickup == null)
+        {
+            _ritualOfferingSerial = null;
+            Logger.Warn("深红献祭仪式启动时未能记录 SCP1576 召唤物，拾取中断逻辑将不会生效。");
+            return;
+        }
+
+        _ritualOfferingSerial = pickup.Serial;
+        Logger.Info($"深红献祭仪式召唤物已记录：{pickup.Type}，Serial={pickup.Serial}。");
+    }
+
+    public bool IsRitualOfferingPickup(Pickup pickup)
+    {
+        return IsHoldingEvent &&
+               pickup != null &&
+               pickup.Type == ItemType.SCP1576 &&
+               _ritualOfferingSerial.HasValue &&
+               pickup.Serial == _ritualOfferingSerial.Value;
+    }
+
+    public bool IsRitualOfferingItem(Item item)
+    {
+        return IsHoldingEvent &&
+               item != null &&
+               item.Type == ItemType.SCP1576 &&
+               _ritualOfferingSerial.HasValue &&
+               item.Serial == _ritualOfferingSerial.Value;
+    }
+
+    public bool IsCrimsonMember(Player player)
+    {
+        return player != null && player.GetDataStore<MemberData>().IsMember;
     }
 
     public void CleanupForRoundEnd()
@@ -685,10 +771,58 @@ public class CrimsonSon : Plugin<CSConfig>
         return RoleID.Follower;
     }
 
+    private List<Player> GetSummonCandidates()
+    {
+        var candidates = new List<Player>();
+        var sourcePlayers = _config.CountDummySpectatorsForSummon
+            ? Player.List.Concat(Player.DummyList)
+            : Player.List;
+
+        foreach (var player in sourcePlayers)
+        {
+            if (player == null || player.Role != RoleTypeId.Spectator)
+            {
+                continue;
+            }
+
+            if (player.IsDummy && !_config.CountDummySpectatorsForSummon)
+            {
+                continue;
+            }
+
+            if (candidates.Any(candidate => candidate.PlayerId == player.PlayerId))
+            {
+                continue;
+            }
+
+            candidates.Add(player);
+        }
+
+        return candidates;
+    }
+
+    private string BuildCassieSubtitle(string subtitle)
+    {
+        return subtitle ?? string.Empty;
+    }
+
+    private string BuildCassiePauseMessage()
+    {
+        int holdSeconds = ResolveCassieHoldSeconds();
+        return holdSeconds > 0
+            ? string.Join(" ", Enumerable.Repeat(".", holdSeconds))
+            : string.Empty;
+    }
+
+    private int ResolveCassieHoldSeconds()
+    {
+        return Math.Min(120, Math.Max(0, _config.CassieBroadcastHoldSeconds));
+    }
+
     private bool CanRetrySummon()
     {
         var current999B = FindCurrent999B();
-        return current999B != null && current999B.Room != null && current999B.Room.Name == RoomName.EzIntercom && Round.IsRoundInProgress;
+        return current999B != null && Round.IsRoundInProgress;
     }
 
     private Player FindCurrent999B()
@@ -699,6 +833,11 @@ public class CrimsonSon : Plugin<CSConfig>
     private bool IsCurrent999B(Player player)
     {
         if (player == null || !player.IsAlive)
+        {
+            return false;
+        }
+
+        if (!Player.List.Any(p => p != null && p.PlayerId == player.PlayerId))
         {
             return false;
         }
@@ -723,11 +862,21 @@ public class CrimsonSon : Plugin<CSConfig>
         return data.IsMember && data.characterID == RoleID.HolyFather && player.Role == RoleTypeId.Tutorial;
     }
 
+    private bool IsActiveRitualFor(Player player, int ritualSequence)
+    {
+        return IsHoldingEvent &&
+               _ritualSequence == ritualSequence &&
+               player != null &&
+               _ritualOwnerPlayerId.HasValue &&
+               _ritualOwnerPlayerId.Value == player.PlayerId;
+    }
+
     private void CleanupRitualState(bool hideHud = true)
     {
         IsHoldingEvent = false;
         InSCP049Chamber = false;
         _ritualOwnerPlayerId = null;
+        _ritualOfferingSerial = null;
 
         if (_eventSessionId != 0)
         {
@@ -837,6 +986,19 @@ public class CrimsonSon : Plugin<CSConfig>
             .Replace("{Room}", roomName);
     }
 
+    private static float ResolveNotificationY(CSConfig config)
+    {
+        const float minSpacing = 90f;
+
+        if (Mathf.Abs(config.NotificationX - config.RitualCountdownX) < 1f &&
+            Mathf.Abs(config.NotificationY - config.RitualCountdownY) < minSpacing)
+        {
+            return config.RitualCountdownY + minSpacing;
+        }
+
+        return config.NotificationY;
+    }
+
     private bool TryGetPlayerHud(Player player, out PlayerHud playerHud)
     {
         playerHud = null;
@@ -851,6 +1013,7 @@ public class CrimsonSon : Plugin<CSConfig>
             return _playerHuds.TryGetValue(player, out playerHud) && playerHud != null;
         }
 
+        playerHud.Initialize();
         return true;
     }
 
@@ -913,7 +1076,7 @@ public class CrimsonSon : Plugin<CSConfig>
                 Text = string.Empty,
                 FontSize = _config.NotificationFontSize,
                 XCoordinate = _config.NotificationX,
-                YCoordinate = _config.NotificationY,
+                YCoordinate = ResolveNotificationY(_config),
                 Alignment = HintAlignment.Center,
                 YCoordinateAlign = HintVerticalAlign.Bottom,
                 Hide = true,
