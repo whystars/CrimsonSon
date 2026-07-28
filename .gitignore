@@ -20,3 +20,8 @@ translations.yml
 
 # Local assistant instructions
 AGENTS.md
+PROGRESS.md
+local-skills/
+PROJECT_CONTEXT.md
+DEV_PLAN.md
+HANDOFF.md
