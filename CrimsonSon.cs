@@ -31,7 +31,7 @@ public class CrimsonSon : Plugin<CSConfig>
     public override string Name { get; } = "CrimsonSon";
     public override string Description { get; } = "深红之子第三方阵营：召唤深红教团，护送教皇完成献祭仪式终结回合。";
     public override string Author { get; } = "Crystal";
-    public override Version Version { get; } = new(1, 2, 0);
+    public override Version Version { get; } = new(1, 2, 1);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
     public override LoadPriority Priority { get; } = LoadPriority.Lowest;
     public override bool IsTransparent { get; } = false;
