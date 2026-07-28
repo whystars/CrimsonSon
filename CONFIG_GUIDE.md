@@ -52,7 +52,7 @@ CrimsonSon 使用按端口分目录的 LabAPI 配置路径。
 - `CountDummySpectatorsForSummon`：是否允许旁观状态的 dummy NPC 计入召唤候选。测试服可以开启，正式服建议关闭。
 - `RitualDurationSeconds`：献祭仪式倒计时时长，单位为秒。
 - `SummonAudioVolume`、`EventAudioVolume`、`CassieAudioVolume`：召唤入场、仪式和 CASSIE 配套音频音量。
-- `CassieBroadcastHoldSeconds`：召唤时 CASSIE message 自动发送的英文句号数量。代码会生成 `. . . .` 这种空格分隔格式；实测约 1 个 `.` 延长 1 秒显示时间。这些句号不会追加到中文字幕后面，CASSIE 声音由 `cassie.wav` 播放。
+- `CassieBroadcastHoldSeconds`：控制召唤字幕停留多久。换算规则和它为什么是"句号数量"，见 [DESIGN.md 的召唤表现一节](DESIGN.md#召唤表现)。
 - `SpawnRoom`：深红阵营第二波生成房间。
 - `Spawn999BRoom`：`SCP-999-B` 开局生成房间。
 - HUD 坐标和字号：角色介绍、仪式倒计时、全局提示的位置与字体大小。

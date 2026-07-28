@@ -8,8 +8,6 @@ CrimsonSon（深红之子）是一个基于 LabAPI 的 `SCP: Secret Laboratory` 
 
 当前插件版本：`1.2.0`
 
-验证状态：`1.2.0` 已完成实机测试，暂未发现问题。
-
 ## 玩法概览
 
 回合开始后，插件会从 D 级人员中随机选择一名玩家成为 `SCP-999-B`。`SCP-999-B` 需要前往广播室，满足条件后会从观察者中召唤深红之子阵营。
@@ -23,7 +21,7 @@ CrimsonSon（深红之子）是一个基于 LabAPI 的 `SCP: Secret Laboratory` 
 Release 默认只提供 `CrimsonSon.dll`。服务器需要提前安装或具备兼容版本的前置组件：
 
 - `Northwood.LabAPI 1.1.7`
-- `SCPSL-AudioManagerAPI 2.3.6`
+- `SCPSL-AudioManagerAPI 2.4.2`
 - `HintServiceMeow 5.5.0`
 - `.NET Framework 4.8.1`
 
