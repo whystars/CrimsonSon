@@ -1,4 +1,4 @@
-using AudioManagerAPI.Defaults;
+﻿using AudioManagerAPI.Defaults;
 using AudioManagerAPI.Features.Enums;
 using CustomPlayerEffects;
 using HintServiceMeow.Core.Enum;
@@ -29,7 +29,7 @@ namespace CrimsonSon;
 public class CrimsonSon : Plugin<CSConfig>
 {
     public override string Name { get; } = "CrimsonSon";
-    public override string Description { get; } = "一个实现了深红之子阵营的插件，内容丰富";
+    public override string Description { get; } = "深红之子第三方阵营：召唤深红教团，护送教皇完成献祭仪式终结回合。";
     public override string Author { get; } = "Crystal";
     public override Version Version { get; } = new(1, 2, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
@@ -86,6 +86,9 @@ public class CrimsonSon : Plugin<CSConfig>
     private const string SUMMON_KEY = "SUMMON";
     private const string EVENT_KEY = "EVENT";
     private const string CASSIE_KEY = "CASSIE";
+
+    // 生成点水平散布半径（米）。房间坐标是房间中心，1.2 米足够把一波人错开，又不容易穿墙。
+    private const float SpawnJitterRadius = 1.2f;
 
     public CSConfig _config = new();
     public CSTranslation _trans = new();
@@ -217,10 +220,11 @@ public class CrimsonSon : Plugin<CSConfig>
         int ritualSequence = ++_ritualSequence;
         _eventSessionId = DefaultAudioManager.Instance.PlayGlobalAudio(
             key: EVENT_KEY,
+            state: true,
+            validPlayersFilter: static (target, _) => target != null,
             loop: false,
             volume: Mathf.Clamp01(_config.EventAudioVolume),
-            priority: AudioPriority.High,
-            validPlayersFilter: _ => true);
+            priority: AudioPriority.High);
 
         string chamberName = InSCP049Chamber ? "SCP-049 的收容室" : "SCP-106 的收容室";
         ShowTemporaryMessageToAll(_trans.RitualStarted, 5f);
@@ -394,10 +398,11 @@ public class CrimsonSon : Plugin<CSConfig>
         DefaultAudioManager.Stop(_cassieSessionId);
         _cassieSessionId = DefaultAudioManager.Instance.PlayGlobalAudio(
             key: CASSIE_KEY,
+            state: true,
+            validPlayersFilter: static (target, _) => target != null,
             loop: false,
             volume: Mathf.Clamp01(_config.CassieAudioVolume),
-            priority: AudioPriority.High,
-            validPlayersFilter: target => target != null);
+            priority: AudioPriority.High);
     }
 
     private void PlaySummonAudioForFaction()
@@ -405,10 +410,11 @@ public class CrimsonSon : Plugin<CSConfig>
         DefaultAudioManager.Stop(_summonSessionId);
         _summonSessionId = DefaultAudioManager.Instance.PlayGlobalAudio(
             key: SUMMON_KEY,
+            state: true,
+            validPlayersFilter: static (target, _) => target != null && target.GetDataStore<MemberData>().IsMember,
             loop: false,
             volume: Mathf.Clamp01(_config.SummonAudioVolume),
-            priority: AudioPriority.High,
-            validPlayersFilter: target => target != null && target.GetDataStore<MemberData>().IsMember);
+            priority: AudioPriority.High);
         Logger.Info("深红之子召唤入场音乐已对深红阵营成员播放。");
     }
 
@@ -893,16 +899,23 @@ public class CrimsonSon : Plugin<CSConfig>
         HideCountdownForAll();
     }
 
-    private Vector3? GetRoomSpawnPosition(RoomName roomName)
+    internal Vector3? GetRoomSpawnPosition(RoomName roomName)
     {
-        var firstRoom = Room.Get(roomName).FirstOrDefault();
-        if (firstRoom == null)
+        var rooms = Room.Get(roomName).Where(room => room != null).ToList();
+        if (rooms.Count == 0)
         {
             Logger.Warn($"未获取到房间 {roomName} 的位置。");
             return null;
         }
 
-        return firstRoom.Position + new Vector3(0f, 1f, 0f);
+        // 同名房间可能有多个实例，随机挑一个，再在水平面上撒点，
+        // 避免一波人同时生成时全部叠在同一个坐标上。
+        var room = rooms[Random.Range(0, rooms.Count)];
+        float angle = Random.Range(0f, Mathf.PI * 2f);
+        float radius = Random.Range(0f, SpawnJitterRadius);
+        var jitter = new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+
+        return room.Position + new Vector3(0f, 1f, 0f) + jitter;
     }
 
     private void SucceedShowToAll(string message)

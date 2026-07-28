@@ -5,7 +5,6 @@ using LabApi.Features.Wrappers;
 using MapGeneration;
 using MEC;
 using PlayerRoles;
-using System.Linq;
 using UnityEngine;
 using static CrimsonSon.CrimsonSon;
 using Logger = LabApi.Features.Console.Logger;
@@ -31,20 +30,11 @@ public class CSEventsHandler : CustomEventsHandler
         if (p.GetDataStore<MemberData>().IsMember && ev.NewRole.RoleTypeId == RoleTypeId.Tutorial)
         {
             Logger.Info($"{p.Nickname} 成为 {Instance.Translations[p.GetDataStore<MemberData>().characterID].Name}。");
-            Vector3? targetPos = null;
             var targetRoom = p.GetDataStore<MemberData>().characterID == RoleID.SCP999B
                 ? Instance._config.Spawn999BRoom
                 : Instance._config.SpawnRoom;
-            var firstRoom = Room.Get(targetRoom).FirstOrDefault();
-            if (firstRoom != null)
-            {
-                targetPos = firstRoom.Position + new Vector3(0, 1, 0);
-            }
-            else
-            {
-                Logger.Warn($"未获取到房间 {targetRoom} 的位置。");
-            }
 
+            Vector3? targetPos = Instance.GetRoomSpawnPosition(targetRoom);
             if (targetPos.HasValue)
             {
                 Timing.CallDelayed(0.1f, () => p.Position = targetPos.Value);
